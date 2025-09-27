@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>硬件增量开发标准决策评估模型-终极优化版</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2; --secondary-color: #50e3c2; --bg-color: #f4f7f9; --card-bg-color: #ffffff;
+            --text-color: #333; --border-color: #e0e6ed; --header-color: #2c3e50; --status-go-bg: #e8f5e9;
+            --status-go-text: #2e7d32; --status-reconsider-bg: #fff3e0; --status-reconsider-text: #ef6c00;
+            --status-reject-bg: #ffebee; --status-reject-text: #c62828; --shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); line-height: 1.6; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; display: grid; gap: 25px; }
+        h1, h2, h3, h4 { color: var(--header-color); margin-bottom: 20px; }
+        h1 { text-align: center; font-size: 2.5em; padding-bottom: 10px; border-bottom: 2px solid var(--border-color); }
+        h2 { border-left: 5px solid var(--primary-color); padding-left: 15px; }
+        h3 { border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-top: 30px; color: #34495e; }
+        .card { background-color: var(--card-bg-color); border-radius: 10px; box-shadow: var(--shadow); padding: 25px; overflow: hidden; }
+        .table-container { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px 15px; text-align: center; border: 1px solid var(--border-color); vertical-align: middle; }
+        th { background-color: #f2f5f7; font-weight: 600; color: #555; white-space: nowrap; }
+        th .weight-header { font-size: 0.8em; color: var(--primary-color); font-weight: bold;}
+        td.label { text-align: left; font-weight: 600; background-color: #f8f9fa; }
+        .sub-item-row td { background-color: #fdfdfd; padding: 15px; vertical-align: top; }
+        .sub-item-label { font-size: 0.9em; color: #555; text-align: left; padding-right: 10px;}
+        .sub-item-heading { font-weight: bold; color: #555; margin-bottom: 8px; font-size: 0.9em; text-align: left; }
+        .input-score, .input-text, .input-value, .sub-item-select { width: 100%; min-width: 100px; padding: 8px; border: 1px solid var(--border-color); border-radius: 5px; font-size: 1em; transition: border-color 0.3s, box-shadow 0.3s; box-sizing: border-box; }
+        .input-score[disabled] { background-color: #e9ecef; }
+        .output-p { font-weight: bold; font-size: 1.1em; }
+        .output-result { font-weight: bold; font-size: 1.1em; min-width: 130px; white-space: nowrap; }
+        .status-go { background-color: var(--status-go-bg); color: var(--status-go-text); }
+        .status-reconsider { background-color: var(--status-reconsider-bg); color: var(--status-reconsider-text); }
+        .status-reject { background-color: var(--status-reject-bg); color: var(--status-reject-text); }
+        .weights-container { display: flex; justify-content: space-around; text-align: center; padding: 15px 0; background-color: #f8f9fa; border-radius: 8px; flex-wrap: wrap; }
+        .weight-item { font-size: 1.1em; margin: 10px; }
+        .weight-item > span { display: block; font-size: 0.8em; color: #6c757d; margin-bottom: 5px; }
+        .input-percent-wrapper { display: flex; align-items: center; justify-content: center; }
+        .weight-input { width: 60px; text-align: center; font-size: 1.2em; border: 1px solid var(--border-color); border-radius: 5px; padding: 5px; margin-right: 5px; }
+        #weight-total-status { text-align: center; margin-top: 15px; font-weight: bold; }
+        .total-ok { color: var(--status-go-text); } .total-error { color: var(--status-reject-text); }
+        .decision-summary { background-color: #e9eff5; border: 2px solid var(--primary-color); border-radius: 8px; padding: 20px; margin-bottom: 25px; }
+        .decision-summary ul { display: flex; justify-content: space-around; list-style: none; padding: 0; margin: 0; text-align: center; flex-wrap: wrap;}
+        .decision-summary li { font-weight: bold; margin: 5px 10px; }
+        .decision-rules-container { margin-top: 40px; border-top: 2px solid var(--border-color); padding-top: 30px; }
+        .rule-block { margin-bottom: 20px; padding: 20px; border-radius: 8px; border-left: 5px solid; }
+        .rule-block h4 { margin-top: 0; margin-bottom: 10px; font-size: 1.3em; display: flex; align-items: center; }
+        .rule-block p { margin: 5px 0 15px; } .rule-block strong { color: var(--header-color); } .rule-block ol { padding-left: 25px; margin: 0; }
+        .rule-block.go { border-color: var(--status-go-text); background-color: var(--status-go-bg); } .rule-block.go h4 { color: var(--status-go-text); }
+        .rule-block.reconsider { border-color: var(--status-reconsider-text); background-color: var(--status-reconsider-bg); } .rule-block.reconsider h4 { color: var(--status-reconsider-text); }
+        .rule-block.reject { border-color: var(--status-reject-text); background-color: var(--status-reject-bg); } .rule-block.reject h4 { color: var(--status-reject-text); }
+        .rule-block h4::before { content: '▶'; margin-right: 12px; font-size: 0.8em; }
+        .appendix-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 40px; }
+        .total-row { font-weight: bold; background-color: #f2f5f7; } .total-row td { color: var(--primary-color); font-size: 1.1em; }
+        /* --- OPTIMIZATION: Styles for hardware cost checklist --- */
+        .cost-checklist-container { border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; background: #fdfdfd; max-height: 600px; overflow-y: auto; }
+        .cost-checklist { list-style: none; padding: 0; margin: 0; }
+        .cost-checklist li { margin-bottom: 8px; }
+        .level-1-header { font-weight: bold; color: var(--header-color); padding-bottom: 8px; border-bottom: 1px solid var(--border-color); margin: 15px 0 10px; font-size: 1.1em; }
+        .cost-checklist .level-2-list { list-style: none; padding-left: 15px; margin-top: 8px; }
+        .cost-checklist .level-2 label { display: block; font-size: .95em; color: #333; }
+        .cost-checklist .cost-item { margin-right: 8px; }
+        .cost-checklist .cost-value { font-size: 0.9em; color: var(--primary-color); margin-left:10px; font-family: monospace; }
+        .cost-checklist-total { margin-top: 20px; padding-top: 15px; border-top: 2px solid var(--primary-color); display: flex; justify-content: space-between; align-items: center; font-size: 1.2em; font-weight: bold; }
+        .cost-checklist-total span:first-child { color: var(--header-color); }
+        .cost-checklist-total span:last-child { color: var(--status-go-text); }
+        /* --- OPTIMIZATION: Styles for custom input fields --- */
+        .custom-cost-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.95em; }
+        .custom-cost-input { width: 120px; padding: 5px; border: 1px solid var(--border-color); border-radius: 4px; text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>硬件增量开发标准决策评估模型</h1></header>
+        <div class="card">
+            <h2>评估计算器</h2>
+            <div class="table-container">
+                 <table id="evaluation-table">
+                    <thead><tr><th>需求名称</th><th>战略价值 A<br><span id="header-weight-a" class="weight-header"></span></th><th>商业价值 B<br><span id="header-weight-b" class="weight-header"></span></th><th>成本效率 C<br><span id="header-weight-c" class="weight-header"></span></th><th>评估分数 P</th><th>判定结果</th></tr></thead>
+                    <tbody>
+                        <tr id="main-calc-row"><td><input type="text" class="input-text" placeholder="在此输入..."></td><td><input id="score-a" type="number" class="input-score" disabled placeholder="0"></td><td><input id="score-b" type="number" class="input-score" disabled placeholder="0"></td><td><input id="score-c" type="number" class="input-score" disabled placeholder="0"></td><td class="output-p">0.00</td><td class="output-result">待评估</td></tr>
+                        <tr class="sub-item-row"><td class="sub-item-label">评估子项</td><td><div class="sub-item-heading">可复用性：</div><select id="sub-item-a" data-target="score-a" class="sub-item-select"><option value="" selected>-- 请选择 --</option><option value="100">无改造直接标准化</option><option value="70">需少量改造(&lt;20%)</option><option value="30">需大量改造(&gt;50%)</option><option value="0">纯定制不可复用</option></select></td><td><div class="sub-item-heading">ROI：</div><select id="sub-item-b" data-target="score-b" class="sub-item-select"><option value="" selected>-- 请选择 --</option><option value="100">≥ 10w</option><option value="80">5w-10w</option><option value="60">3w-5w</option><option value="30">1w-3w</option><option value="0">&lt; 1w</option></select></td><td><div class="sub-item-heading">研发投入：</div><select id="sub-item-c" data-target="score-c" class="sub-item-select"><option value="" selected>-- 请选择 --</option><option value="100">≤ 5 人/天</option><option value="70">5-15 人/天</option><option value="30">15-30 人/天</option><option value="0">&gt; 30 人/天</option></select></td><td colspan="2"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+         <div class="card">
+            <h2>核心决策算法</h2>
+             <p>权重配置:</p>
+             <div class="weights-container"><div class="weight-item"><span>战略价值 (a)</span><div class="input-percent-wrapper"><input type="number" class="weight-input" id="weight-a-input" value="15" min="0" max="100" step="1"><span>%</span></div></div><div class="weight-item"><span>商业价值 (b)</span><div class="input-percent-wrapper"><input type="number" class="weight-input" id="weight-b-input" value="70" min="0" max="100" step="1"><span>%</span></div></div><div class="weight-item"><span>成本效率 (c)</span><div class="input-percent-wrapper"><input type="number" class="weight-input" id="weight-c-input" value="15" min="0" max="100" step="1"><span>%</span></div></div></div><div id="weight-total-status"></div>
+        </div>
+        <div class="card">
+            <h2>量化评估标准与决策规则</h2>
+            <div class="decision-summary"><h3>决策判定规则</h3><ul><li><span class="go">P ≥ 60 : 启动增量</span></li><li><span class="reconsider">35 ≤ P &lt; 60 : 重新沟通/暂缓</span></li><li><span class="reject">P &lt; 35 : 明确拒绝</span></li></ul></div>
+            <div class="decision-rules-container"><h3>决策规则说明</h3><div class="rule-block go"><h4>P ≥ 60分: 优先启动</h4><p><strong>描述：</strong> 高战略、高收益、低成本。典型的“必做”需求。</p><p><strong>行动：</strong></p><ol><li>立即立项，设为最高优先级。</li><li>优先分配最优秀的研发资源。</li><li>设定积极的交付时间表。</li></ol></div><div class="rule-block reconsider"><h4>P = 35 - 60分: 重新谈判/暂缓</h4><p><strong>描述：</strong> 价值不清晰，或成本过高。</p><p><strong>行动：</strong></p><ol><li>与客户沟通，引导需求向产品方向调整。</li><li>与客户协商，共担开发成本。</li><li>若无果，放入长期需求池观察。</li></ol></div><div class="rule-block reject"><h4>P &lt; 35分: 明确拒绝</h4><p><strong>描述：</strong> 低战略、低收益、高成本。典型的“资源黑洞”。</p><p><strong>行动：</strong></p><ol><li>准备充分理由，礼貌而坚定地拒绝。</li><li>尽可能提供现有功能的替代方案。</li><li>强调拒绝是为了保证产品的核心价值。</li></ol></div></div>
+        </div>
+        <div class="card">
+            <h2>附录：估算工具</h2>
+            <div class="appendix-grid">
+                <div class="cost-checklist-container" id="hardware-cost-checklist">
+                    <h4>硬件增量开发成本评估</h4>
+                    <ul class="cost-checklist">
+                        <li class="level-1"><h5 class="level-1-header">白牌（无logo）</h5><ul class="level-2-list"><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="4146.65" data-days="2.07"> 机壳 - 去掉鲁邦通公司logo <span class="cost-value">2.07 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="1515.26" data-days="0.76"> 设备/飞机盒标签 - 去掉公司logo，网址、地址 <span class="cost-value">0.76 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="1515.26" data-days="0.76"> 外箱标签 - 去掉CoO: Chix 信息 <span class="cost-value">0.76 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="4545.78" data-days="2.27"> 软件OEM包 - 登录页/copyright/index/label/证书去logo <span class="cost-value">2.27 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="2392.39" data-days="1.20"> 贴膜 - 去掉鲁邦通公司logo <span class="cost-value">1.20 人天</span></label></li></ul></li>
+                        <li class="level-1"><h5 class="level-1-header">logo定制</h5><ul class="level-2-list"><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="6419.54" data-days="3.21"> 机壳 - 定制客户logo <span class="cost-value">3.21 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="3907.65" data-days="1.95"> 贴膜 - 定制客户logo <span class="cost-value">1.95 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="2272.89" data-days="1.14"> 标签 - 定制客户logo <span class="cost-value">1.14 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="6061.04" data-days="3.03"> 软件OEM包 - 登录页/copyright/index/label/证书定制客户logo/名称 <span class="cost-value">3.03 人天</span></label></li></ul></li>
+                        <li class="level-1"><h5 class="level-1-header">贴膜定制</h5><ul class="level-2-list"><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="3150.02" data-days="1.58"> 定制客户网址/型号/颜色 <span class="cost-value">1.58 人天</span></label></li></ul></li>
+                        <li class="level-1"><h5 class="level-1-header">机壳定制</h5><ul class="level-2-list"><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="7256.04" data-days="3.63"> 定制机壳颜色 <span class="cost-value">3.63 人天</span></label></li></ul></li>
+                        <li class="level-1"><h5 class="level-1-header">标签定制</h5><ul class="level-2-list"><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="3030.52" data-days="1.52"> 设备/飞机盒标签 - 定制名称/型号/网址/IP/码/认证等 <span class="cost-value">1.52 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="3030.52" data-days="1.52"> 外箱标签 - 定制模板/型号/产地等 <span class="cost-value">1.52 人天</span></label></li></ul></li>
+                        <li class="level-1"><h5 class="level-1-header">包装定制</h5><ul class="level-2-list"><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="7057.67" data-days="3.53"> 飞机盒 - 定制尺寸/LOGO/包装方式 <span class="cost-value">3.53 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="5542.41" data-days="2.77"> 外纸箱 - 定制尺寸/LOGO/包装方式 <span class="cost-value">2.77 人天</span></label></li></ul></li>
+                        <li class="level-1"><h5 class="level-1-header">定制标签-外采</h5><ul class="level-2-list"><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="9005.52" data-days="4.50"> A码 - 新增唯一A码 <span class="cost-value">4.50 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="15824.19" data-days="7.91"> B码 - 新增带wifi/蓝牙/POE/等型号 <span class="cost-value">7.91 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="46769.91" data-days="23.38"> B码 - 导入全新4G模组（minipcie/M.2）<span class="cost-value">23.38 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="25421.95" data-days="12.71"> B码 - 导入非全新4G模组（minipcie/M.2）<span class="cost-value">12.71 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="55220.95" data-days="27.61"> B码 - 导入全新5G模组（minipcie/M.2）<span class="cost-value">27.61 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="26616.95" data-days="13.31"> B码 - 导入非全新5G模组（minipcie/M.2）<span class="cost-value">13.31 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="10606.82" data-days="5.30"> B码 - 导入无模组型号 <span class="cost-value">5.30 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="3030.52" data-days="1.52"> C码 - 新增三防漆工艺 <span class="cost-value">1.52 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="4545.78" data-days="2.27"> C码 - 定制 E-SIM卡 <span class="cost-value">2.27 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="48705.33" data-days="24.35"> C码 - 导入全新4G模组（LGA） <span class="cost-value">24.35 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="36583.25" data-days="18.29"> C码 - 导入非全新4G模组（LGA） <span class="cost-value">18.29 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="12104.87" data-days="6.05"> C码 - 导入无模组型号 <span class="cost-value">6.05 人天</span></label></li><li class="level-2"><label><input type="checkbox" class="cost-item" data-cost="39310.72" data-days="19.66"> C码 - 增加Flash/DDR容量 <span class="cost-value">19.66 人天</span></label></li></ul></li>
+                        <!-- --- OPTIMIZATION: Replaced checkboxes with free-text input fields for cost --- -->
+                        <li class="level-1"><h5 class="level-1-header">新增个性化认证</h5><ul class="level-2-list"><li class="level-2 custom-cost-item"><span>区域准入认证 - 认证人工费</span><input type="number" class="custom-cost-input" placeholder="输入金额(元)" step="100"></li></ul></li>
+                        <li class="level-1"><h5 class="level-1-header">其他定制</h5><ul class="level-2-list"><li class="level-2 custom-cost-item"><span>XML - 出厂预置客户XML</span><input type="number" class="custom-cost-input" placeholder="输入金额(元)" step="100"></li><li class="level-2 custom-cost-item"><span>SIM卡 - 出厂预装客供SIM卡</span><input type="number" class="custom-cost-input" placeholder="输入金额(元)" step="100"></li><li class="level-2 custom-cost-item"><span>配件 - 电源端子预装</span><input type="number" class="custom-cost-input" placeholder="输入金额(元)" step="100"></li></ul></li>
+                    </ul>
+                    <div class="cost-checklist-total"><span>评估结果:</span><span id="total-hardware-summary">0.00 人天 / 0.00 元</span></div>
+                </div>
+                <div>
+                     <h4>投资回报率 (ROI) 估算 (元)</h4>
+                     <div class="table-container"><table id="roi-table"><tbody><tr><td class="label" colspan="3">A. 收益</td></tr><tr><td></td><td>订单收益</td><td><input type="number" id="roi-order-revenue" class="input-value roi-input" placeholder="0.00" step="100"></td></tr><tr><td></td><td>NRE费用</td><td><input type="number" id="roi-nre-fee" class="input-value roi-input" placeholder="0.00" step="100"></td></tr><tr class="total-row"><td></td><td style="text-align: right;">收益合计</td><td id="roi-total-revenue">0.00</td></tr><tr><td class="label" colspan="3">B. 成本</td></tr><tr><td></td><td>研发人力成本</td><td><input type="number" id="roi-rd-cost" class="input-value" disabled placeholder="0.00"></td></tr><tr><td></td><td>其他费用</td><td><input type="number" id="roi-other-cost" class="input-value roi-input" placeholder="0.00" step="100"></td></tr><tr class="total-row"><td></td><td style="text-align: right;">成本合计</td><td id="roi-total-cost">0.00</td></tr><tr class="total-row"><td class="label" colspan="2" style="background-color: var(--primary-color); color: white;">C. 投资回报率 (ROI = A - B)</td><td id="roi-final" style="background-color: var(--primary-color); color: white;">0.00</td></tr></tbody></table></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const weights = {};
+            // --- OPTIMIZATION: Central constant for cost/day conversion ---
+            const COST_PER_DAY = 2000;
+
+            function updateWeights() {
+                const a = parseFloat(document.getElementById('weight-a-input').value) || 0;
+                const b = parseFloat(document.getElementById('weight-b-input').value) || 0;
+                const c = parseFloat(document.getElementById('weight-c-input').value) || 0;
+                const total = a + b + c;
+                const weightStatusEl = document.getElementById('weight-total-status');
+                weightStatusEl.textContent = `权重总和: ${total}% ${total === 100 ? '(有效)' : '(无效, 总和必须等于100%)'}`;
+                weightStatusEl.className = total === 100 ? 'total-ok' : 'total-error';
+                weights.a = a / 100; weights.b = b / 100; weights.c = c / 100;
+                document.getElementById('header-weight-a').textContent = `(权重 a: ${a}%)`;
+                document.getElementById('header-weight-b').textContent = `(权重 b: ${b}%)`;
+                document.getElementById('header-weight-c').textContent = `(权重 c: ${c}%)`;
+                calculateEvaluationRow();
+            }
+
+            function calculateEvaluationRow() {
+                const values = { a: parseFloat(document.getElementById('score-a').value) || 0, b: parseFloat(document.getElementById('score-b').value) || 0, c: parseFloat(document.getElementById('score-c').value) || 0, };
+                const allSelected = document.getElementById('sub-item-a').value !== "" && document.getElementById('sub-item-b').value !== "" && document.getElementById('sub-item-c').value !== "";
+                const pScore = (values.a * weights.a) + (values.b * weights.b) + (values.c * weights.c);
+                const outputPEl = document.querySelector('.output-p'); const outputResultEl = document.querySelector('.output-result');
+                outputPEl.textContent = pScore.toFixed(2);
+                let resultText, resultClass;
+                if (!allSelected) { resultText = '待评估'; resultClass = ''; } 
+                else if (pScore >= 60) { resultText = '启动增量'; resultClass = 'status-go'; } 
+                else if (pScore >= 35) { resultText = '重新沟通/暂缓'; resultClass = 'status-reconsider'; } 
+                else { resultText = '明确拒绝'; resultClass = 'status-reject'; }
+                outputResultEl.textContent = resultText; outputResultEl.className = 'output-result ' + resultClass;
+            }
+
+            document.querySelectorAll('.sub-item-select').forEach(select => {
+                select.addEventListener('change', () => {
+                    document.getElementById(select.dataset.target).value = select.value;
+                    calculateEvaluationRow();
+                });
+            });
+
+            document.querySelectorAll('.weight-input').forEach(input => input.addEventListener('input', updateWeights));
+            
+            const hardwareChecklist = document.getElementById('hardware-cost-checklist');
+            const roiTable = document.getElementById('roi-table');
+
+            function calculateHardwareCost() {
+                let totalCost = 0;
+                let totalDays = 0;
+                // Part 1: Calculate cost from fixed checkboxes
+                hardwareChecklist.querySelectorAll('.cost-item:checked').forEach(item => {
+                    totalCost += parseFloat(item.dataset.cost) || 0;
+                    totalDays += parseFloat(item.dataset.days) || 0;
+                });
+                
+                // --- OPTIMIZATION: Part 2: Add cost from custom input fields ---
+                hardwareChecklist.querySelectorAll('.custom-cost-input').forEach(input => {
+                    const customCost = parseFloat(input.value) || 0;
+                    if (customCost > 0) {
+                        totalCost += customCost;
+                        totalDays += customCost / COST_PER_DAY;
+                    }
+                });
+                
+                const costFormatted = totalCost.toLocaleString('zh-CN', { style: 'currency', currency: 'CNY' });
+                document.getElementById('total-hardware-summary').textContent = `${totalDays.toFixed(2)} 人天 / ${costFormatted}`;
+                
+                document.getElementById('roi-rd-cost').value = totalCost.toFixed(2);
+                calculateROI();
+            }
+
+            function calculateROI() {
+                const rdCost = parseFloat(document.getElementById('roi-rd-cost').value) || 0;
+                const orderRevenue = parseFloat(document.getElementById('roi-order-revenue').value) || 0;
+                const nreFee = parseFloat(document.getElementById('roi-nre-fee').value) || 0;
+                const otherCost = parseFloat(document.getElementById('roi-other-cost').value) || 0;
+                const totalRevenue = orderRevenue + nreFee;
+                const totalCost = rdCost + otherCost;
+                
+                document.getElementById('roi-total-revenue').textContent = totalRevenue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('roi-total-cost').textContent = totalCost.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('roi-final').textContent = (totalRevenue - totalCost).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            // --- OPTIMIZATION: Use 'input' event to capture both checkbox clicks and text typing in real-time ---
+            hardwareChecklist.addEventListener('input', calculateHardwareCost);
+            roiTable.addEventListener('input', e => {
+                if (e.target.classList.contains('roi-input')) {
+                    calculateROI();
+                }
+            });
+            
+            updateWeights();
+            calculateHardwareCost();
+        });
+    </script>
+</body>
+</html>
